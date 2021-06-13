@@ -1,0 +1,6 @@
+# DATA folders
+DATA/
+__pycache__/
+
+# Test file
+.test.py
