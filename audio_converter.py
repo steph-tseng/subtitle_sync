@@ -1,3 +1,4 @@
+# All credit to Alberto Sabeter, I've link his github and blog in my README
 # %%
 import numpy as np
 import subprocess
@@ -7,6 +8,7 @@ import pickle
 import os
 import re
 import time
+import tensorflow as tf
 
 DATA_DIR = 'DATA'
 STORE_DIR = 'datasets'
@@ -30,18 +32,30 @@ def get_step_mfcc(step_sample, hop_len, freq):
 
 def getAudio(freq=FREQ, audio_files=None):
     files = os.listdir(DATA_DIR)
-    p = re.compile('.*.[mkv|avi]')
+    p = re.compile('.*mp4')
     files = [ f for f in files if p.match(f)]
 
     if audio_files:
         files = [ f for f in files if os.path.splitext(f)[0] in audio_files]
-
+    # path = '/Users/steph/ML_final/subsync/DATA'
     audio_dirs = []
     for f in files:
         name, extension = os.path.splitext(f)
-        command = "ffmpeg -1 {0}{1}{2} -ab 160k -ac 2 -ar {3} -vn {0}{1}_{3}.wav".format(DATA_DIR, name, extension, freq)
-        audio_dirs.append(DATA_DIR + name + '_' + str(FREQ) + '.wav')
-        subprocess.call(command, shell=True)
+        command = [
+            'ffmpeg',
+            '-n', # ignore if exists
+            # '-y', # overwrite if exists
+            '-loglevel', 
+            'error',
+            '-i', os.path.join(DATA_DIR, f), # input
+            '-vn', # no video
+            '-sn', # no subtitles
+            '-ac', '1', # convert to mono
+            os.path.join(DATA_DIR, name + '.wav')
+        ]
+        # command = 'ffmpeg -i v1.mp4 -vn -sn v1.wav'
+        audio_dirs.append(os.path.join(DATA_DIR, name + '.wav'))
+        subprocess.check_output(command)
     
     return audio_dirs
 
@@ -70,20 +84,19 @@ def posToTime(pos, step_mfcc, freq, hop_len):
 
 # Generate a train dataset from a video file and its subtitles
 def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, freq, verbose=False):
-    
     if verbose: print ('Loading', train_file, 'data...')
     
     total_time = time.time()
     
     # Process audio
     t = time.time()
-    audio_dir = getAudio(freq, [train_file])
+    audio_dir = getAudio(freq, [train_file])[0]
+    print('audio dir', audio_dir)
     t_audio = time.time()-t
     if verbose: print ("- Audio extracted: {0:02d}:{1:02d}").format(int(t_audio/60), int(t_audio % 60))
 
     # Load subtitles
-    subs = pysrt.open(os.path.join(DATA_DIR, train_file)+'.srt', encoding='iso-8859-1')
-    
+    subs = pysrt.open(os.path.join(DATA_DIR, train_file+'.srt'), encoding='iso-8859-1')
     t = time.time()
    
     if cut_data:
@@ -119,6 +132,7 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
         train_data = np.stack(samples)
     else:
         samples = mfcc
+        train_data = np.stack(samples)
     t_feat = time.time()-t
     if verbose: print ("- Features calculated: {0:02d}:{1:02d}").format(int(t_feat/60), int(t_feat % 60))
 
@@ -135,7 +149,7 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
     t_labels = time.time()-t
     if verbose: print ("- Labels calculated: {0:02d}:{1:02d}").format(int(t_labels/60), int(t_labels % 60))
     total_time = time.time()-total_time
-    print ('Data times. audio: {0:.2f}, audio_load {1:.2f}, t_feat: {2:.2f},  t_labels {3:.2f}, total_time: {4:.2f}, {5}').format(t_audio, t_audio_load, t_feat, t_labels, total_time, str(train_data.shape))
+    # print ('Data times. audio: {0:.2f}, audio_load {1:.2f}, t_feat: {2:.2f},  t_labels {3:.2f}, total_time: {4:.2f}, {5}').format(t_audio, t_audio_load, t_feat, t_labels, total_time, str(train_data.shape))
     
     if verbose: print (train_data.shape, labels.shape)
     return train_data, labels
@@ -143,29 +157,44 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
     
 # Generate a train dataset from an array of video files
 def generateDatasets(train_files, cut_data, len_mfcc, step_mfcc, hop_len, freq):
+    print('train files', train_files)
     
     X, Y = [], []
     
-    for tf in train_files:
+    for t_f in train_files:
 
-        train_data, labels = generateSingleDataset(tf, cut_data, len_mfcc, step_mfcc, hop_len, freq)
+        train_data, labels = generateSingleDataset(t_f, cut_data, len_mfcc, step_mfcc, hop_len, freq)
                 
         X.append(train_data)
         Y.append(labels)
+    
+    X = tf.ragged.constant(X)
+    X = X.to_tensor()
+    Y = tf.ragged.constant(Y)
+    Y = Y.to_tensor()
         
-    X = np.concatenate(X)
-    Y = np.concatenate(Y)
-        
+    # X = np.concatenate(X)
+    # Y = np.concatenate(Y)
+    # X = tf.data.Dataset.from_tensor_slices(X)
+    # Y = tf.data.Dataset.from_tensor_slices(Y)
+
+    os.makedirs(STORE_DIR, exist_ok=True)
     if cut_data:
-        filename = STORE_DIR + 'dataset_CUT_' + str(freq) + '_' + str(hop_len) + '_' + str(len_mfcc) + '_' + str(step_mfcc) + '_' + str(X.shape[0]) + '_' + str(X.shape[1]) + '_' + str(X.shape[2]) + '.pickle'
+        # filename = STORE_DIR + 'dataset_CUT_' + str(freq) + '_' + str(hop_len) + '_' + str(len_mfcc) + '_' + str(step_mfcc) + '_' + str(X.shape[0]) + '_' + str(X.shape[1]) + '_' + str(X.shape[2]) + '.pickle'
+        # filename = STORE_DIR + 'dataset_CUT_' + str(freq) + '_' + str(hop_len) + '_' + str(len_mfcc) + '_' + str(step_mfcc) + '.pickle'
+        filename = os.path.join(STORE_DIR, f'dataset_CUT_{freq}_{hop_len}_{len_mfcc}_{step_mfcc}.pickle')
     else:
-        filename = STORE_DIR + 'dataset_' + str(freq) + '_' + str(hop_len) + '_' + str(len_mfcc) + '_' + str(step_mfcc) + '_' + str(X.shape[0]) + '_' + str(X.shape[1]) + '_' + str(X.shape[2]) + '.pickle'
+        # filename = STORE_DIR + 'dataset_' + str(freq) + '_' + str(hop_len) + '_' + str(len_mfcc) + '_' + str(step_mfcc) + '_' + str(X.shape[0]) + '_' + str(X.shape[1]) + '_' + str(X.shape[2]) + '.pickle'
+        # filename = STORE_DIR + 'dataset_' + str(freq) + '_' + str(hop_len) + '_' + str(len_mfcc) + '_' + str(step_mfcc) + '.pickle'
+        filename = os.path.join(STORE_DIR, f'dataset_{freq}_{hop_len}_{len_mfcc}_{step_mfcc}.pickle')
+
+
     print (filename)
-    with open(filename, 'w') as f:
+    with open(filename, 'wb') as f:
         pickle.dump([X, Y], f)
         
+        
     return X, Y
-
 
 # Generate a dataset from all available files
 def generateAllDatasets(freq=FREQ):

@@ -160,3 +160,37 @@ for sub in subs:
                 labels[i] = 1
             
 # %%
+import librosa
+from pathlib import Path
+
+path = Path('DATA/v1.wav')
+librosa.load(path)
+# %%
+import subprocess
+
+DATA_DIR = '/Users/steph/ML_final/subsync/DATA'
+name = 'v1'
+command = [
+            'ffmpeg',
+            '-y', # overwrite if exists
+            '-loglevel', 'error',
+            '-i', 'DATA/v1.mp4', # inputa
+            '-vn', # no video
+            '-sn', # no subtitles
+            '-ac', '1', # convert to mono
+            os.path.join(DATA_DIR, name + '.wav')
+        ]
+# command = 'ffmpeg -i v1.mp4 -vn -sn v1.wav'
+subprocess.check_output(command)
+# %%
+
+subprocess.check_output(['echo', 'Hello world!'])
+# %%
+import pickle
+from pathlib import Path
+path = 'datasets/dataset_CUT_4000_128.0_2.34375_1.5625.pickle'
+# path = Path('datasets/dataset_CUT_4000_128.0_2.34375_1.5625.pickle')
+with open(path, 'rb') as f:
+    X, Y = pickle.load(f) 
+# X, Y = 
+# %%
