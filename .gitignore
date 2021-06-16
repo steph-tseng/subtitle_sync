@@ -1,6 +1,7 @@
 # DATA folders
 DATA/
 __pycache__/
+.vscode/
 
 # Test file
 .test.py

@@ -27,19 +27,21 @@ rand = random.randint(len(Y))
 X = X[rand]
 Y = Y[rand]
 
-X = tf.ragged.constant(X)
-X = X.to_tensor()
-Y = tf.ragged.constant(Y)
+# X = tf.ragged.constant(X)
+# X = X.to_tensor()
+# Y = tf.ragged.constant(Y)
 # Y = Y.to_tensor()
-X = tf.transpose(X)
+# X = tf.transpose(X)
                     
-# input_shape = (X.shape[1], X.shape[2])
+# input_shape = (X
+# .shape[1], X.shape[2])
 input_shape = (X.shape)
 # print(input_shape)  
-print(X.shape)
+print(input_shape)
 print(Y.shape)
 
 
+#%%
 def model_lstm(input_shape):
     model = tf.keras.Sequential()
     model.add(LSTM(16, activation='relu', input_shape=(input_shape)))
@@ -70,4 +72,42 @@ print ("-----------------------------")
 print ("-----------------------------")
 print ("-----------------------------")
 print ("-----------------------------\n\n\n")
+
+
+# %%
+import pickle
+import numpy as np
+from numpy import random
+
+path = 'datasets/dataset_CUT_4000_128.0_2.34375_1.5625.pickle'
+
+with open(path, 'rb') as f:
+    X, Y = pickle.load(f) 
+
+rand = random.randint(len(Y))
+X = X[rand]
+Y = Y[rand]
+
+X = np.array([ np.rot90(val) for val in X ])
+X = X - np.mean(X, axis=0)
+#    X = X[:,1:,:]
+
+print (X.shape, len(Y[Y==0]), len(Y[Y==1]), float(len(Y[Y==0]))/len(Y[Y==1]))
+
+input_shape = (X.shape[1], X.shape[2])
+# %%
+from pathlib import Path
+if __package__ is None:                  
+    DIR = Path(__file__).resolve().parent
+    sys.path.insert(0, str(DIR.parent))
+    __package__ = DIR.name
+# from .train import *
+from .audio_converter import *
+
+X, Y = generateDatasets(['v2'], True, LEN_MFCC, STEP_MFCC, hop_len=HOP_LEN, freq=FREQ)
+
+# %%
+print('X', X.shape)
+print('Y', Y.shape)
+
 # %%

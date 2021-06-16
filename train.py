@@ -49,9 +49,8 @@ def train_lstm():
 
                 X, Y = generateDatasets(train_files, True, len_mfcc, step_mfcc, hop_len=hop_len, freq=f)
 
-                # rand = np.random.permutation(np.arange(len(Y)))
                 rand = random.randint(len(Y))
-                X = X[rand]
+                X = X[rand] # Fulfills the same function as data generator
                 Y = Y[rand]
                 
                 X = np.array([ np.rot90(val) for val in X ])

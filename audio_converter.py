@@ -1,4 +1,4 @@
-# All credit to Alberto Sabeter, I've link his github and blog in my README
+# All credit to Alberto Sabeter, I've link his github and blog in my README, it's just updated a bit so that it works with python 3.9
 # %%
 import numpy as np
 import subprocess
@@ -33,14 +33,13 @@ def get_step_mfcc(step_sample, hop_len, freq):
 def getAudio(freq=FREQ, audio_files=None):
     files = os.listdir(DATA_DIR)
     p = re.compile('.*mp4')
-    files = [ f for f in files if p.match(f)]
+    files = [ f for f in files if p.match(f)] # Take only files that have .mp4 extension
 
     if audio_files:
-        files = [ f for f in files if os.path.splitext(f)[0] in audio_files]
-    # path = '/Users/steph/ML_final/subsync/DATA'
-    audio_dirs = []
+        files = [ f for f in files if os.path.splitext(f)[0] in audio_files] # Take only first instance of the file returned
+    audio_dirs = [] # Returns a list of .wav files that have been converted from .mp4
     for f in files:
-        name, extension = os.path.splitext(f)
+        name, extension = os.path.splitext(f) # Split name and extension
         command = [
             'ffmpeg',
             '-n', # ignore if exists
@@ -54,8 +53,8 @@ def getAudio(freq=FREQ, audio_files=None):
             os.path.join(DATA_DIR, name + '.wav')
         ]
         # command = 'ffmpeg -i v1.mp4 -vn -sn v1.wav'
-        audio_dirs.append(os.path.join(DATA_DIR, name + '.wav'))
-        subprocess.check_output(command)
+        audio_dirs.append(os.path.join(DATA_DIR, name + '.wav')) 
+        subprocess.check_output(command) # Runs command variable (as defined above) to convert file from .mp4 to .wav using ffmpeg
     
     return audio_dirs
 
@@ -84,7 +83,7 @@ def posToTime(pos, step_mfcc, freq, hop_len):
 
 # Generate a train dataset from a video file and its subtitles
 def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, freq, verbose=False):
-    if verbose: print ('Loading', train_file, 'data...')
+    if verbose: print('Loading', train_file, 'data...')
     
     total_time = time.time()
     
@@ -93,7 +92,7 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
     audio_dir = getAudio(freq, [train_file])[0]
     print('audio dir', audio_dir)
     t_audio = time.time()-t
-    if verbose: print ("- Audio extracted: {0:02d}:{1:02d}").format(int(t_audio/60), int(t_audio % 60))
+    if verbose: print("- Audio extracted: {0:02d}:{1:02d}").format(int(t_audio/60), int(t_audio % 60))
 
     # Load subtitles
     subs = pysrt.open(os.path.join(DATA_DIR, train_file+'.srt'), encoding='iso-8859-1')
@@ -114,7 +113,7 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
     os.remove(audio_dir)
     
     t_audio_load = time.time()-t
-    if verbose: print ("- Audio loaded: {0:02d}:{1:02d}").format(int(t_audio_load/60), int(t_audio_load % 60))
+    if verbose: print("- Audio loaded: {0:02d}:{1:02d}").format(int(t_audio_load/60), int(t_audio_load % 60))
 
     t = time.time()
 
@@ -129,29 +128,29 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
         # Remove last element. Probably not complete
         samples = samples[:int((mfcc.shape[1]-len_mfcc)/step_mfcc)+1]
        
-        train_data = np.stack(samples)
+        train_data = tf.stack(samples)
     else:
         samples = mfcc
-        train_data = np.stack(samples)
+        train_data = tf.stack(samples)
     t_feat = time.time()-t
-    if verbose: print ("- Features calculated: {0:02d}:{1:02d}").format(int(t_feat/60), int(t_feat % 60))
+    if verbose: print("- Features calculated: {0:02d}:{1:02d}").format(int(t_feat/60), int(t_feat % 60))
 
 
     t = time.time()
 
     # Create array of labels
-    labels = np.zeros(len(train_data))
+    labels = tf.zeros(shape=(train_data.shape))
     for sub in subs:
         for i in np.arange(timeToPos(sub.start, step_mfcc, freq, hop_len), timeToPos(sub.end, step_mfcc, freq, hop_len)+1):
             if i < len(labels):
                 labels[i] = 1
             
     t_labels = time.time()-t
-    if verbose: print ("- Labels calculated: {0:02d}:{1:02d}").format(int(t_labels/60), int(t_labels % 60))
+    if verbose: print("- Labels calculated: {0:02d}:{1:02d}").format(int(t_labels/60), int(t_labels % 60))
     total_time = time.time()-total_time
     # print ('Data times. audio: {0:.2f}, audio_load {1:.2f}, t_feat: {2:.2f},  t_labels {3:.2f}, total_time: {4:.2f}, {5}').format(t_audio, t_audio_load, t_feat, t_labels, total_time, str(train_data.shape))
     
-    if verbose: print (train_data.shape, labels.shape)
+    if verbose: print(train_data.shape, labels.shape)
     return train_data, labels
     
     
@@ -163,16 +162,17 @@ def generateDatasets(train_files, cut_data, len_mfcc, step_mfcc, hop_len, freq):
     
     for t_f in train_files:
 
-        train_data, labels = generateSingleDataset(t_f, cut_data, len_mfcc, step_mfcc, hop_len, freq)
+        train_data, labels = generateSingleDataset(t_f, cut_data, len_mfcc, step_mfcc, hop_len, freq, True)
                 
         X.append(train_data)
         Y.append(labels)
     
-    X = tf.ragged.constant(X)
-    X = X.to_tensor()
-    Y = tf.ragged.constant(Y)
-    Y = Y.to_tensor()
-        
+    # X = tf.ragged.constant(X)
+    # X = X.to_tensor()
+    # Y = tf.ragged.constant(Y)
+    # Y = Y.to_tensor()
+    X = tf.concat(X)
+    Y = tf.concat(Y)
     # X = np.concatenate(X)
     # Y = np.concatenate(Y)
     # X = tf.data.Dataset.from_tensor_slices(X)
@@ -189,7 +189,7 @@ def generateDatasets(train_files, cut_data, len_mfcc, step_mfcc, hop_len, freq):
         filename = os.path.join(STORE_DIR, f'dataset_{freq}_{hop_len}_{len_mfcc}_{step_mfcc}.pickle')
 
 
-    print (filename)
+    print(filename)
     with open(filename, 'wb') as f:
         pickle.dump([X, Y], f)
         
@@ -226,11 +226,11 @@ def testDatasetTimes():
     train_files = ['v1', 'v2', 'v3', 'v4']
     
     for tf in train_files:
-        print ('\n * ', tf)
-        print ('_________')
+        print('\n * ', tf)
+        print('_________')
 #        for f in [2000, 4000, 8000, 16000, 22050]:
         for len_sample in [0.075,0.125,0.25,0.5]:
-            print ('Freq:', f)
+            print('Freq:', f)
             len_mfcc = get_len_mfcc(len_sample, hop_len, f)     #  Num of samples to get LEN_SAMPLE
             step_mfcc = get_step_mfcc(step_sample, hop_len, f)     #  Num of samples to get STEP_SAMPLE
         
