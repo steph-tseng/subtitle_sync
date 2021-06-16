@@ -128,10 +128,10 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
         # Remove last element. Probably not complete
         samples = samples[:int((mfcc.shape[1]-len_mfcc)/step_mfcc)+1]
        
-        train_data = tf.stack(samples)
+        train_data = np.stack(samples)
     else:
         samples = mfcc
-        train_data = tf.stack(samples)
+        train_data = np.stack(samples)
     t_feat = time.time()-t
     if verbose: print("- Features calculated: {0:02d}:{1:02d}").format(int(t_feat/60), int(t_feat % 60))
 
@@ -139,7 +139,7 @@ def generateSingleDataset(train_file, cut_data, len_mfcc, step_mfcc, hop_len, fr
     t = time.time()
 
     # Create array of labels
-    labels = tf.zeros(shape=(train_data.shape))
+    labels = np.zeros(shape=(train_data.shape))
     for sub in subs:
         for i in np.arange(timeToPos(sub.start, step_mfcc, freq, hop_len), timeToPos(sub.end, step_mfcc, freq, hop_len)+1):
             if i < len(labels):
@@ -162,7 +162,7 @@ def generateDatasets(train_files, cut_data, len_mfcc, step_mfcc, hop_len, freq):
     
     for t_f in train_files:
 
-        train_data, labels = generateSingleDataset(t_f, cut_data, len_mfcc, step_mfcc, hop_len, freq, True)
+        train_data, labels = generateSingleDataset(t_f, cut_data, len_mfcc, step_mfcc, hop_len, freq)
                 
         X.append(train_data)
         Y.append(labels)
@@ -171,10 +171,10 @@ def generateDatasets(train_files, cut_data, len_mfcc, step_mfcc, hop_len, freq):
     # X = X.to_tensor()
     # Y = tf.ragged.constant(Y)
     # Y = Y.to_tensor()
-    X = tf.concat(X)
-    Y = tf.concat(Y)
-    # X = np.concatenate(X)
-    # Y = np.concatenate(Y)
+    # X = tf.concat(X)
+    # Y = tf.concat(Y)
+    X = np.concatenate(X)
+    Y = np.concatenate(Y)
     # X = tf.data.Dataset.from_tensor_slices(X)
     # Y = tf.data.Dataset.from_tensor_slices(Y)
 

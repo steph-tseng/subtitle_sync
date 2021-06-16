@@ -52,10 +52,12 @@ def train_lstm():
                 rand = random.randint(len(Y))
                 X = X[rand] # Fulfills the same function as data generator
                 Y = Y[rand]
-                
-                X = np.array([ np.rot90(val) for val in X ])
-                X = X - np.mean(X, axis=0)
-            #    X = X[:,1:,:]
+
+                X = np.array([np.rot90(val) for val in X])
+                Y = np.reshape(Y, (-1,1))
+                X = X -np.mean(X, axis =0)
+
+                input_shape = (X.shape[1], X.shape[2])
             
                 print (X.shape, len(Y[Y==0]), len(Y[Y==1]), float(len(Y[Y==0]))/len(Y[Y==1]))
                 
